@@ -1,27 +1,24 @@
-package mndplib
+package mndp
 
 import (
 	"bytes"
 	"encoding/binary"
 	"net"
-
-	"golang.org/x/net/ipv4"
-	"golang.org/x/net/ipv6"
 )
 
 const maxPacketSize = 1500
 const mndpPort = 5678
 
 type udp6Listener struct {
-	packetConnection *ipv6.PacketConn
+	packetConnection net.PacketConn
 }
 
 type udp4Listener struct {
-	packetConnection *ipv4.PacketConn
+	packetConnection net.PacketConn
 }
 
-// MNDPListener ...
-type MNDPListener struct {
+// Listener ...
+type Listener struct {
 	udp4listener *udp4Listener
 	udp6listener *udp6Listener
 }
@@ -36,8 +33,7 @@ func newUDP6Listener() *udp6Listener {
 		return nil
 	}
 
-	ipv6connection := ipv6.NewPacketConn(connection)
-	udp6l.packetConnection = ipv6connection
+	udp6l.packetConnection = connection
 
 	return &udp6l
 }
@@ -52,15 +48,14 @@ func newUDP4Listener() *udp4Listener {
 		return nil
 	}
 
-	ipv4connection := ipv4.NewPacketConn(connection)
-	udp4l.packetConnection = ipv4connection
+	udp4l.packetConnection = connection
 
 	return &udp4l
 }
 
-// NewMNDPListener ...
-func NewMNDPListener() *MNDPListener {
-	var mndpl MNDPListener
+// NewListener ...
+func NewListener() *Listener {
+	var mndpl Listener
 
 	mndpl.udp4listener = newUDP4Listener()
 	mndpl.udp6listener = newUDP6Listener()
@@ -77,49 +72,49 @@ func (listener *udp6Listener) joinMNDPMulticastGroup() {
 
 	for _, inetInterface := range netInterfaces {
 		if (inetInterface.Flags&net.FlagUp != 0) && (inetInterface.Flags&net.FlagMulticast != 0) {
-			if err := listener.packetConnection.JoinGroup(&inetInterface, multicastGroupUDP6); err != nil {
+			if _, err := net.ListenMulticastUDP("udp6", &inetInterface, multicastGroupUDP6); err != nil {
 				continue
 			}
 		}
 	}
 }
 
-func (listener *udp6Listener) listen(ch chan *MNDPMessage) {
+func (listener *udp6Listener) listen(ch chan *Message) {
 	var buff [maxPacketSize]byte
 
 	listener.joinMNDPMulticastGroup()
 
 	for {
-		byteCount, _, addr, err := listener.packetConnection.ReadFrom(buff[:])
+		byteCount, addr, err := listener.packetConnection.ReadFrom(buff[:])
 		if err != nil {
 			return
 		}
 
 		byteReader := bytes.NewReader(buff[0:byteCount])
-		msg := readMndp(byteReader)
-		msg.src = addr.String()
+		msg := ReadMsg(byteReader)
+		msg.Src = addr
 		ch <- msg
 	}
 }
 
-func (listener *udp4Listener) listen(ch chan *MNDPMessage) {
+func (listener *udp4Listener) listen(ch chan *Message) {
 	var buff [maxPacketSize]byte
 
 	for {
-		byteCount, _, addr, err := listener.packetConnection.ReadFrom(buff[:])
+		byteCount, addr, err := listener.packetConnection.ReadFrom(buff[:])
 		if err != nil {
 			return
 		}
 
 		byteReader := bytes.NewReader(buff[0:byteCount])
-		msg := readMndp(byteReader)
-		msg.src = addr.String()
+		msg := ReadMsg(byteReader)
+		msg.Src = addr
 		ch <- msg
 	}
 }
 
 // Listen ...
-func (listener *MNDPListener) Listen(ch chan *MNDPMessage) {
+func (listener *Listener) Listen(ch chan *Message) {
 	listener.RequestRefresh()
 	go listener.udp4listener.listen(ch)
 	go listener.udp6listener.listen(ch)
@@ -147,7 +142,7 @@ func (listener *udp4Listener) requestRefresh() {
 
 		broadcast := directedBroadcast(inet)
 		if broadcast != nil {
-			listener.packetConnection.WriteTo([]byte{0, 0, 0, 0}, nil, &net.UDPAddr{IP: broadcast, Port: mndpPort})
+			_, _ = listener.packetConnection.WriteTo([]byte{0, 0, 0, 0}, &net.UDPAddr{IP: broadcast, Port: mndpPort})
 		}
 	}
 
@@ -161,14 +156,14 @@ func (listener *udp6Listener) requestRefresh() {
 
 	for _, iface := range interfaces {
 		if (iface.Flags&net.FlagUp != 0) && (iface.Flags&net.FlagMulticast != 0) {
-			listener.packetConnection.WriteTo([]byte{0, 0, 0, 0}, nil, &net.UDPAddr{IP: net.IPv6linklocalallnodes, Port: mndpPort, Zone: iface.Name})
+			_, _ = listener.packetConnection.WriteTo([]byte{0, 0, 0, 0}, &net.UDPAddr{IP: net.IPv6linklocalallnodes, Port: mndpPort, Zone: iface.Name})
 		}
 	}
 
 }
 
 // RequestRefresh ...
-func (listener *MNDPListener) RequestRefresh() {
+func (listener *Listener) RequestRefresh() {
 	listener.udp4listener.requestRefresh()
 	listener.udp6listener.requestRefresh()
 }

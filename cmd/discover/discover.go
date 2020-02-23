@@ -1,24 +1,24 @@
 package main
 
 import "fmt"
-import "github.com/pjediny/mndp/mndplib"
+import "github.com/pjediny/mndp/pkg/mndp"
 
-func printMNDPs(ch chan *mndplib.MNDPMessage) {
+func printMNDPs(ch chan *mndp.Message) {
 	for msg := range ch {
 		fmt.Println(msg.String())
 	}
 }
 func main() {
-	ch := make(chan *mndplib.MNDPMessage)
+	ch := make(chan *mndp.Message)
 
-	listener := mndplib.NewMNDPListener()
+	listener := mndp.NewListener()
 	listener.Listen(ch)
 
 	go printMNDPs(ch)
 
 	var response int
 	for {
-		fmt.Scanf("%c", &response) //<--- here
+		_, _ = fmt.Scanf("%c", &response) //<--- here
 		switch response {
 		case 'q':
 			fmt.Println("Quiting")

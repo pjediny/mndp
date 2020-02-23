@@ -1,4 +1,8 @@
 # Created by https://www.gitignore.io/api/visualstudiocode,windows,go
+### Idea
+
+/.idea/
+
 
 ### VisualStudioCode ###
 .vscode/*
@@ -61,3 +65,4 @@ _testmain.go
 vendor/
 
 debug
+

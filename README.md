@@ -4,8 +4,8 @@ The **MNDP** is a proprietary **M**ikrotik **N**eighbor **D**iscovery **P**rotoc
 equipment](https://routerboard.com/) similar to *CDP* which runs on Cisco equipment. 
 
 The repository contains source code for 3rd party implementation attempt of **MNDP** listener written in golang:
-* `discover` command (commandline tool)
-* `mndplib` package (golang library)
+* `discover` command (commandline tool) to listening to Mikrotik discovery messages 
+* `mndp` package (golang library)
 
 ## Installation
 
@@ -13,9 +13,9 @@ The repository contains source code for 3rd party implementation attempt of **MN
 2. Setup environment:
     - Set `GOPATH` to go workspace directory
     - Set `PATH` to contain `GOROOT/bin` and `GOPATH/bin`
-3. Install the discover command by 
+3. Install the discover command by invoking
     ```
-    go get -u github.com/pjediny/mndp/discover/
+    go get -u github.com/pjediny/mndp/cmd/discover/
     ```
 
 ## Using `discover`
